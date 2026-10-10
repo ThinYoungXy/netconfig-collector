@@ -13,3 +13,4 @@ results.csv
 known_hosts*
 .env
 .env.*
+*.ssh.jsonl

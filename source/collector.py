@@ -4,6 +4,9 @@ import codecs
 import csv
 import hashlib
 import ipaddress
+import json
+import logging
+import uuid
 import os
 import re
 import socket
@@ -229,32 +232,109 @@ def safe_name(text):
     return re.sub(r'[^A-Za-z0-9\u4e00-\u9fff._-]', "_", text)[:100].strip(". ") or "device"
 
 
+class SSHDiagnostics(logging.Handler):
+    """Write only explicit stages and an allowlist of negotiated algorithms."""
+    def __init__(self, filename):
+        super().__init__()
+        self.stream = Path(filename).open("w", encoding="utf-8")
+        self.started = time.monotonic()
+
+    def record(self, event, **fields):
+        with self.lock:
+            self.stream.write(json.dumps(dict(seconds=round(time.monotonic() - self.started, 3),
+                                              event=event, **fields), ensure_ascii=False) + "\n")
+            self.stream.flush()
+
+    def emit(self, record):
+        message = record.getMessage()
+        if re.fullmatch(r"(?:Kex|HostKey|Cipher|MAC|Compression): [A-Za-z0-9@._,+/ -]+", message):
+            self.record("algorithm", value=message)
+
+    def close(self):
+        with self.lock:
+            self.stream.close()
+        super().close()
+
+
 def collect(device, credentials, folder, index, known_hosts, confirm, cancel, timeout=180, encoding="utf-8", on_status=None):
     client = paramiko.SSHClient()
     base = Path(folder) / f"{index:04d}_{safe_name(device.name)}_{safe_name(device.host)}"
     result = dict(name=device.name, host=device.host, platform=device.platform,
                   status="失败", file="", message="", sha256="")
     stage = "准备连接"
+    trace = None
+    network_socket = None
+    logger = None
     def status(value):
         nonlocal stage
         stage = value
+        if trace:
+            trace.record("stage", value=value)
         if on_status:
             on_status(value)
     try:
         if cancel.is_set():
             raise CollectionError("已停止")
+        trace = SSHDiagnostics(str(base) + ".ssh.jsonl")
+        trace.record("connection", host=device.host, port=device.port,
+                     paramiko=paramiko.__version__, connect_timeout=15)
+        logger = logging.getLogger("netconfig.ssh." + uuid.uuid4().hex)
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+        logger.addHandler(trace)
+        client.set_log_channel(logger.name)
         username, password = credentials
         with HOST_LOCK:
             if Path(known_hosts).exists():
                 client.load_host_keys(str(known_hosts))
         client.set_missing_host_key_policy(ConfirmHostKey(known_hosts, confirm, cancel))
-        status("SSH 连接 / 认证")
+        class ObservedTransport(paramiko.Transport):
+            def start_client(self, *args, **kwargs):
+                status("SSH 握手 / 算法协商")
+                result = super().start_client(*args, **kwargs)
+                trace.record("negotiated", host_key=self.host_key_type,
+                             outbound_cipher=self.local_cipher, inbound_cipher=self.remote_cipher,
+                             outbound_mac=self.local_mac, inbound_mac=self.remote_mac)
+                status("校验 SSH 主机密钥")
+                return result
+
+            def auth_password(self, *args, **kwargs):
+                status("SSH 密码认证")
+                return super().auth_password(*args, **kwargs)
+
+            def auth_interactive(self, *args, **kwargs):
+                status("SSH 交互式认证")
+                return super().auth_interactive(*args, **kwargs)
+
+        status("TCP 连接")
+        network_socket = socket.create_connection((device.host, device.port), timeout=15)
         client.connect(device.host, port=device.port, username=username, password=password,
                        timeout=15, banner_timeout=15, auth_timeout=15, channel_timeout=15,
-                       allow_agent=False, look_for_keys=False)
+                       allow_agent=False, look_for_keys=False,
+                       sock=network_socket, transport_factory=ObservedTransport)
         transport = client.get_transport()
         transport.set_keepalive(15)
-        channel = client.invoke_shell(width=240, height=1000)
+        status("打开 SSH 会话通道")
+        channel = transport.open_session(timeout=15)
+
+        def request_terminal(label, operation):
+            status(label)
+            expired = threading.Event()
+            def expire():
+                expired.set()
+                channel.close()
+            timer = threading.Timer(15, expire)
+            timer.daemon = True
+            timer.start()
+            try:
+                operation()
+            finally:
+                timer.cancel()
+                if expired.is_set():
+                    raise CollectionError("终端请求超时（15 秒）")
+
+        request_terminal("申请 PTY 终端", lambda: channel.get_pty(term="vt100", width=240, height=1000))
+        request_terminal("启动交互 Shell", channel.invoke_shell)
         channel.settimeout(15)
         status("等待登录提示符")
         shell = Shell(channel, device.platform, cancel, min(timeout, 30), encoding)
@@ -282,8 +362,12 @@ def collect(device, credentials, folder, index, known_hosts, confirm, cancel, ti
                       message=warning + "已确认命令提示符和配置特征；未验证可恢复性",
                       sha256=hashlib.sha256(content).hexdigest())
     except paramiko.BadHostKeyException:
+        if trace:
+            trace.record("error", exception="BadHostKeyException", stage=stage)
         result["message"] = "SSH 主机密钥已变化，连接被拒绝；请核实设备身份"
     except paramiko.AuthenticationException:
+        if trace:
+            trace.record("error", exception="AuthenticationException", stage=stage)
         result["message"] = "SSH 认证失败，请检查账号、密码和权限"
     except CollectionError as exc:
         result["message"] = str(exc)
@@ -297,14 +381,24 @@ def collect(device, credentials, folder, index, known_hosts, confirm, cancel, ti
             except OSError:
                 result["message"] += "；残缺输出保存失败"
     except (socket.timeout, TimeoutError):
-        result["message"] = "网络连接或 SSH 协商超时"
+        result["message"] = "该阶段等待超时（15 秒）"
     except (paramiko.SSHException, OSError, EOFError) as exc:
+        if trace:
+            trace.record("error", exception=type(exc).__name__, stage=stage)
         # Do not include arbitrary SSH banners or credentials in reports.
         result["message"] = f"连接、SSH 协商或文件写入失败（{type(exc).__name__}）"
     except Exception as exc:
         result["message"] = f"采集异常（{type(exc).__name__}）"
     finally:
         client.close()
+        if network_socket:
+            network_socket.close()
+        if trace:
+            trace.record("result", status=result["status"], stage=stage)
+            if logger:
+                logger.removeHandler(trace)
+            trace.close()
+            result["message"] += "；诊断日志：" + base.name + ".ssh.jsonl"
     if result["status"] == "失败":
         result["message"] = stage + "：" + result["message"]
     return result

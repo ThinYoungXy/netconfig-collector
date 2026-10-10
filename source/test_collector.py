@@ -1,4 +1,6 @@
 import csv
+import json
+import logging
 import socket
 import tempfile
 import threading
@@ -9,7 +11,7 @@ from unittest.mock import patch
 
 import paramiko
 from collector import (CollectionError, Device, PROFILES, Shell, collect, device_from_row,
-                       read_inventory, validate_config, write_summary)
+                       read_inventory, validate_config, write_summary, SSHDiagnostics)
 
 HUAWEI = "#\nsysname TEST-NE\n#\ninterface LoopBack0\n ip address 192.0.2.1 255.255.255.255\n#\nreturn"
 STONE = 'Building configuration..\nRunning configuration:\n!\nVersion 5.5R11\nhostname FW\nip vrouter "trust-vr"\nexit\n!'
@@ -297,6 +299,47 @@ class CollectorTests(unittest.TestCase):
         write_summary(self.folder, [result])
         with (self.folder / "results.csv").open(encoding="utf-8-sig") as stream:
             self.assertEqual(next(csv.DictReader(stream))["name"], "'=1+1")
+    def test_diagnostics_allowlist(self):
+        path = self.folder / "diagnostic.jsonl"
+        handler = SSHDiagnostics(path)
+        for message in ("Kex: curve25519-sha256@libssh.org", "Password: SECRET", "sysname PRIVATE",
+                        "Authentication banner: SECRET"):
+            handler.emit(logging.LogRecord("test", logging.DEBUG, "", 0, message, (), None))
+        handler.close()
+        content = path.read_text(encoding="utf-8")
+        self.assertIn("curve25519", content)
+        self.assertNotIn("SECRET", content)
+        self.assertNotIn("PRIVATE", content)
+
+    def test_real_diagnostics_stage_and_privacy(self):
+        result, _ = self.run_device()
+        self.assertEqual(result["status"], "成功", result)
+        path = next(self.folder.glob("*.ssh.jsonl"))
+        content = path.read_text(encoding="utf-8")
+        events = [json.loads(line) for line in content.splitlines()]
+        stages = [event["value"] for event in events if event["event"] == "stage"]
+        self.assertEqual(stages[:7], ["TCP 连接", "SSH 握手 / 算法协商", "校验 SSH 主机密钥",
+                                     "SSH 密码认证", "打开 SSH 会话通道", "申请 PTY 终端", "启动交互 Shell"])
+        self.assertTrue(any(event["event"] == "negotiated" for event in events))
+        self.assertNotIn("test-only", content)
+        self.assertNotIn("sysname TEST-NE", content)
+        self.assertIn(".ssh.jsonl", result["message"])
+
+    def test_tcp_timeout_has_precise_stage(self):
+        with patch("collector.socket.create_connection", side_effect=socket.timeout):
+            result = collect(Device("test", "192.0.2.1", "Huawei CE"), ("name", "SECRET"),
+                             self.folder, 1, self.folder / "known_hosts", lambda *a: True, threading.Event())
+        self.assertTrue(result["message"].startswith("TCP 连接："))
+        self.assertEqual(result["status"], "失败")
+        self.assertNotIn("SECRET", next(self.folder.glob("*.ssh.jsonl")).read_text(encoding="utf-8"))
+
+    def test_pty_rejection_has_precise_stage(self):
+        with patch.object(Server, "check_channel_pty_request", return_value=False):
+            result, commands = self.run_device()
+        self.assertEqual(result["status"], "失败")
+        self.assertTrue(result["message"].startswith("申请 PTY 终端："), result)
+        self.assertEqual(commands, [])
+
     def test_precancel_no_connect(self):
         cancel = threading.Event()
         cancel.set()

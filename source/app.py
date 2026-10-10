@@ -19,7 +19,7 @@ STATE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "NetConfigColle
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("设备配置采集器 1.3.1")
+        root.title("设备配置采集器 1.3.2")
         root.geometry("1180x880")
         root.minsize(1020, 760)
         root.configure(background="#f3f6fb")
@@ -79,7 +79,7 @@ class App:
         header = ttk.Frame(main)
         header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         ttk.Label(header, text="设备配置采集器", style="Title.TLabel").pack(side="left")
-        ttk.Label(header, text="本地 SSH 采集    /    v1.3.1", style="Muted.TLabel").pack(side="right", anchor="s", pady=8)
+        ttk.Label(header, text="本地 SSH 采集    /    v1.3.2", style="Muted.TLabel").pack(side="right", anchor="s", pady=8)
         ttk.Label(main, text="华为 NE / AR / CE / USG     ·     H3C Comware     ·     山石 StoneOS",
                   style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 16))
 
