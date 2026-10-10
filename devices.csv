@@ -1,0 +1,8 @@
+﻿name,host,platform,port,credential
+NE-01,192.0.2.1,Huawei NE,22,default
+AR-01,192.0.2.2,Huawei AR,22,default
+CE-01,192.0.2.3,Huawei CE,22,default
+H3C-01,192.0.2.4,H3C Comware,22,default
+K1280-A,192.0.2.5,Hillstone StoneOS,22,default
+K5680-A,192.0.2.6,Hillstone StoneOS,22,default
+USG-01,192.0.2.7,Huawei USG,22,default
