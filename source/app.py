@@ -19,7 +19,7 @@ STATE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "NetConfigColle
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("设备配置采集器 1.3")
+        root.title("设备配置采集器 1.3.1")
         root.geometry("1180x880")
         root.minsize(1020, 760)
         root.configure(background="#f3f6fb")
@@ -79,7 +79,7 @@ class App:
         header = ttk.Frame(main)
         header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         ttk.Label(header, text="设备配置采集器", style="Title.TLabel").pack(side="left")
-        ttk.Label(header, text="本地 SSH 采集    /    v1.3", style="Muted.TLabel").pack(side="right", anchor="s", pady=8)
+        ttk.Label(header, text="本地 SSH 采集    /    v1.3.1", style="Muted.TLabel").pack(side="right", anchor="s", pady=8)
         ttk.Label(main, text="华为 NE / AR / CE / USG     ·     H3C Comware     ·     山石 StoneOS",
                   style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 16))
 
@@ -260,15 +260,58 @@ class App:
         self.selected_changed()
         self.status.set("设备已更新。可点击“保存清单”保存为 CSV，下次直接导入。")
 
+    def show_dialog(self, dialog):
+        """Position the completed dialog before showing it."""
+        dialog.update_idletasks()
+        if sys.platform == "win32":
+            import ctypes
+            from ctypes import wintypes
+
+            class MonitorInfo(ctypes.Structure):
+                _fields_ = [("size", wintypes.DWORD), ("monitor", wintypes.RECT),
+                            ("work", wintypes.RECT), ("flags", wintypes.DWORD)]
+
+            user32 = ctypes.windll.user32
+            user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
+            user32.GetAncestor.restype = wintypes.HWND
+            user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+            user32.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
+            user32.MonitorFromWindow.restype = wintypes.HANDLE
+            user32.GetMonitorInfoW.argtypes = [wintypes.HANDLE, ctypes.POINTER(MonitorInfo)]
+            user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int,
+                                           ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT]
+            parent = user32.GetAncestor(self.root.winfo_id(), 2)
+            window = user32.GetAncestor(dialog.winfo_id(), 2)
+            parent_rect, rect = wintypes.RECT(), wintypes.RECT()
+            info = MonitorInfo()
+            info.size = ctypes.sizeof(info)
+            if (user32.GetWindowRect(parent, ctypes.byref(parent_rect)) and
+                    user32.GetWindowRect(window, ctypes.byref(rect)) and
+                    user32.GetMonitorInfoW(user32.MonitorFromWindow(parent, 2), ctypes.byref(info))):
+                width, height = rect.right - rect.left, rect.bottom - rect.top
+                x = (parent_rect.left + parent_rect.right - width) // 2
+                y = (parent_rect.top + parent_rect.bottom - height) // 2
+                x = max(info.work.left, min(x, info.work.right - width))
+                y = max(info.work.top, min(y, info.work.bottom - height))
+                user32.SetWindowPos(window, None, x, y, 0, 0, 0x0015)
+        else:
+            x = max(0, self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_reqwidth()) // 2)
+            y = max(0, self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_reqheight()) // 2)
+            dialog.geometry(f"+{x}+{y}")
+        dialog.deiconify()
+        dialog.lift(self.root)
+        dialog.grab_set()
+        dialog.focus_set()
+
     def device_dialog(self, index=None):
         if self.running:
             return
         dialog = tk.Toplevel(self.root)
+        dialog.withdraw()
         dialog.title("编辑设备" if index is not None else "添加设备")
         dialog.resizable(False, False)
         dialog.configure(background="#ffffff")
         dialog.transient(self.root)
-        dialog.grab_set()
         panel = ttk.Frame(dialog, style="Card.TFrame", padding=24)
         panel.pack(fill="both", expand=True)
         ttk.Label(panel, text="编辑设备" if index is not None else "添加设备",
@@ -295,6 +338,7 @@ class App:
                    style="Primary.TButton", command=save).pack(side="left")
         dialog.bind("<Escape>", lambda event: dialog.destroy())
         dialog.bind("<Return>", lambda event: save())
+        self.show_dialog(dialog)
 
     def double_click(self, event):
         item = self.tree.identify_row(event.y)
@@ -351,10 +395,10 @@ class App:
 
     def edit_credentials(self):
         dialog = tk.Toplevel(self.root)
+        dialog.withdraw()
         dialog.title("登录凭据 · 仅本次运行有效")
         dialog.resizable(False, False)
         dialog.transient(self.root)
-        dialog.grab_set()
         group = tk.StringVar(value="default")
         username = tk.StringVar()
         password = tk.StringVar()
@@ -383,6 +427,7 @@ class App:
         ttk.Label(dialog, text="不同账号使用不同凭据组，在设备清单中指定。").grid(
             row=3, column=0, columnspan=2, padx=12, pady=8)
         ttk.Button(dialog, text="保存到本次会话", command=save).grid(row=4, column=1, padx=12, pady=12)
+        self.show_dialog(dialog)
 
     def browse(self):
         folder = filedialog.askdirectory()

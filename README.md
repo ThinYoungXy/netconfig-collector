@@ -1,6 +1,6 @@
 # NetConfig Collector
 
-Windows 图形界面的网络设备配置批量采集工具。当前版本：**1.3**。
+Windows 图形界面的网络设备配置批量采集工具。当前版本：**1.3.1**。
 
 支持华为 NE / AR / CE / USG、H3C Comware 和山石 StoneOS 的通用 SSH 采集流程。
 
@@ -34,7 +34,7 @@ devices.csv 是模板，地址 192.0.2.x 必须替换为实际设备地址。
 .\.venv\Scripts\python.exe -m unittest discover -s source -p "test_*.py"
 ~~~
 
-测试需要可创建桌面窗口的 Windows 会话。45 项测试覆盖采集、界面编辑及失败重试。
+测试需要可创建桌面窗口的 Windows 会话。47 项测试覆盖采集、界面编辑及失败重试。
 SSH 测试使用本机模拟服务器，不连接业务设备。测试中凭据均为虚构数据。
 
 ## 构建 Windows EXE
