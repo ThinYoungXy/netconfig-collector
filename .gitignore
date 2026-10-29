@@ -16,3 +16,4 @@ known_hosts*
 *.ssh.jsonl
 inventory.json*
 inventory-*.tmp
+inventory.v1.bak

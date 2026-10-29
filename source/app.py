@@ -24,7 +24,7 @@ class App:
         self.library = Inventory(library_path if library_path is not None else STATE / 'inventory.json')
         self.project_credentials = {}
         self.active_project = None
-        root.title("设备配置采集器 1.5.1")
+        root.title("设备配置采集器 1.6.0")
         root.geometry("1280x860")
         root.minsize(1020, 760)
         root.configure(background="#f3f5f9")
@@ -85,35 +85,25 @@ class App:
         header = ttk.Frame(main)
         header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         ttk.Label(header, text="配置采集工作台", style="Title.TLabel").pack(side="left")
-        ttk.Label(header, text="SSH  /  本地采集  /  v1.5.1", style="Muted.TLabel").pack(side="right")
+        ttk.Label(header, text="SSH  /  本地采集  /  v1.6.0", style="Muted.TLabel").pack(side="right")
         scope = ttk.Frame(main, style="Card.TFrame", padding=12)
         scope.grid(row=1, column=0, sticky="ew", pady=(0, 14))
-        scope.columnconfigure(0, weight=1, uniform="scope")
-        scope.columnconfigure(2, weight=1, uniform="scope")
-        ttk.Separator(scope, orient="vertical").grid(row=0, column=1, sticky="ns", padx=20)
+        ttk.Label(scope, text="当前项目", style="CardMuted.TLabel").pack(side="left", padx=(0, 12))
         self.project = tk.StringVar()
-        self.area = tk.StringVar()
-        for column, text, variable, attribute, kind in (
-                (0, "项目", self.project, "project_box", "project"),
-                (2, "采集区域", self.area, "area_box", "area")):
-            group = ttk.Frame(scope, style="Card.TFrame")
-            group.grid(row=0, column=column, sticky="ew")
-            ttk.Label(group, text=text, style="CardMuted.TLabel").pack(side="left", padx=(0, 12))
-            line = ttk.Frame(group, style="Card.TFrame")
-            line.pack(side="left", fill="x", expand=True)
-            manage = ttk.Menubutton(line, text="管理", width=0)
-            menu = tk.Menu(manage, tearoff=False)
-            for label, action in (("新建", "create"), ("重命名", "rename"), ("删除", "delete")):
-                menu.add_command(label=label + text,
-                                 command=lambda action=action, kind=kind: self.manage_inventory(action, kind))
-            manage.configure(menu=menu)
-            manage.pack(side="right", padx=(10, 0))
-            self.controls.append(manage)
-            box = ttk.Combobox(line, textvariable=variable, width=14, state="readonly")
-            box.pack(side="left", fill="x", expand=True)
-            box.bind("<<ComboboxSelected>>", self.switch_area)
-            setattr(self, attribute, box)
-            self.controls.append(box)
+        self.project_box = ttk.Combobox(scope, textvariable=self.project, width=30, state="readonly")
+        self.project_box.pack(side="left", fill="x", expand=True)
+        self.project_box.bind("<<ComboboxSelected>>", self.switch_project)
+        self.controls.append(self.project_box)
+        create = ttk.Button(scope, text="新建项目", command=lambda: self.manage_inventory("create"))
+        create.pack(side="left", padx=(12, 8))
+        self.controls.append(create)
+        manage = ttk.Menubutton(scope, text="项目管理", width=0)
+        menu = tk.Menu(manage, tearoff=False)
+        for label, action in (("重命名项目", "rename"), ("删除项目", "delete")):
+            menu.add_command(label=label, command=lambda action=action: self.manage_inventory(action))
+        manage.configure(menu=menu)
+        manage.pack(side="left")
+        self.controls.append(manage)
 
         inventory = ttk.Frame(main, style="Card.TFrame", padding=12)
         inventory.grid(row=2, column=0, sticky="nsew")
@@ -210,7 +200,7 @@ class App:
         self.controls.append(trust)
         actions = ttk.Frame(main)
         actions.grid(row=4, column=0, sticky="ew", pady=(16, 0))
-        self.start_button = ttk.Button(actions, text="采集当前区域", style="Primary.TButton", command=self.start)
+        self.start_button = ttk.Button(actions, text="采集当前项目", style="Primary.TButton", command=self.start)
         self.start_button.pack(side="left")
         self.controls.append(self.start_button)
         self.retry_button = ttk.Button(actions, text="重试失败设备", command=self.retry_failed)
@@ -224,26 +214,24 @@ class App:
         ttk.Label(main, textvariable=self.status, wraplength=720).grid(row=6, column=0, sticky="w")
         ttk.Label(main, text="采集文件可能包含设备密钥，请妥善保管。",
                   style="Muted.TLabel").grid(row=7, column=0, sticky="w", pady=(8, 0))
-        self.load_area()
+        self.load_project()
         root.protocol("WM_DELETE_WINDOW", self.close)
         root.after(100, self.poll)
 
 
-    def load_area(self):
-        project, area = self.library.selected
+    def load_project(self):
+        project = self.library.selected
         if self.active_project is not None:
             self.project_credentials[self.active_project] = self.credentials
         self.credentials = self.project_credentials.setdefault(project, {})
         self.active_project = project
         self.project.set(project)
-        self.area.set(area)
         self.project_box.configure(values=list(self.library.data["projects"]))
-        self.area_box.configure(values=list(self.library.data["projects"][project]))
         self.devices = self.library.devices()
         self.last_folder = None
         self.progress.configure(value=0)
         self.refresh()
-        self.status.set(f"{project} / {area}：{len(self.devices)} 台设备；设备信息自动保存。")
+        self.status.set(f"{project}：{len(self.devices)} 台设备；设备信息自动保存。")
 
     def persist_devices(self, devices):
         try:
@@ -252,30 +240,27 @@ class App:
         except (OSError, ValueError) as exc:
             raise ValueError(f"保存设备库失败，修改未生效：{exc}") from exc
 
-    def switch_area(self, event=None):
+    def switch_project(self, event=None):
         if self.running:
-            self.project.set(self.library.selected[0])
-            self.area.set(self.library.selected[1])
+            self.project.set(self.library.selected)
             return
         project = self.project.get()
-        old_project, old_area = self.library.selected
-        area = (next(iter(self.library.data["projects"][project])) if project != old_project else self.area.get())
+        old_project = self.library.selected
         try:
             self.persist_devices(self.devices)
-            self.library.select(project, area)
+            self.library.select(project)
         except (OSError, ValueError) as exc:
             self.project.set(old_project)
-            self.area.set(old_area)
             messagebox.showerror("切换失败", str(exc), parent=self.root)
             return
-        self.load_area()
+        self.load_project()
 
-    def manage_inventory(self, action, kind):
+    def manage_inventory(self, action):
         if self.running:
             return
-        project, area = self.library.selected
-        label = "项目" if kind == "project" else "区域"
-        name = project if kind == "project" else area
+        project = self.library.selected
+        label = "项目"
+        name = project
         if action == "delete":
             if not messagebox.askyesno("删除" + label,
                     f"删除{label}“{name}”及其中保存的设备清单？\n已有采集文件不会删除。",
@@ -292,18 +277,18 @@ class App:
         try:
             self.persist_devices(self.devices)
             if action == "delete":
-                self.library.delete(kind)
+                self.library.delete()
             else:
-                getattr(self.library, action)(kind, value)
+                getattr(self.library, action)(value)
         except (OSError, ValueError) as exc:
             messagebox.showerror("操作失败", str(exc), parent=self.root)
             return
-        if kind == "project" and action in ("rename", "delete"):
+        if action in ("rename", "delete"):
             self.project_credentials.pop(project, None)
             if action == "rename":
-                self.project_credentials[self.library.selected[0]] = self.credentials
+                self.project_credentials[self.library.selected] = self.credentials
             self.active_project = None
-        self.load_area()
+        self.load_project()
 
 
     def refresh(self):
@@ -323,8 +308,8 @@ class App:
             return
         try:
             devices = read_inventory(filename)
-            if self.devices and not messagebox.askyesno("替换当前区域清单",
-                    f"将替换“{self.project.get()} / {self.area.get()}”的设备清单，继续吗？", parent=self.root):
+            if self.devices and not messagebox.askyesno("替换当前项目清单",
+                    f"将替换“{self.project.get()}”的设备清单，继续吗？", parent=self.root):
                 return
             self.persist_devices(devices)
         except (OSError, UnicodeError, ValueError, csv.Error) as exc:
@@ -394,7 +379,7 @@ class App:
         self.tree.see(str(index))
         self.update_counts()
         self.selected_changed()
-        self.status.set(f"已自动保存到 {self.project.get()} / {self.area.get()}。")
+        self.status.set(f"已自动保存到 {self.project.get()}。")
 
     def show_dialog(self, dialog):
         """Position the completed dialog before showing it."""
@@ -614,8 +599,8 @@ class App:
             if not self.output.get().strip():
                 raise ValueError("请选择保存目录")
             self.persist_devices(self.devices)
-            project, area = self.library.selected
-            folder = Path(self.output.get()) / project / area / (("retry_" if retry_failed else "") +
+            project = self.library.selected
+            folder = Path(self.output.get()) / project / (("retry_" if retry_failed else "") +
                                               datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
             folder.mkdir(parents=True, exist_ok=False)
             (folder / ".write_test").write_text("ok", encoding="utf-8")
