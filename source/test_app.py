@@ -22,7 +22,8 @@ def descendants(widget):
 class EditorTests(unittest.TestCase):
     def setUp(self):
         self.root = tk.Tk()
-        self.app = App(self.root)
+        self.storage = tempfile.TemporaryDirectory()
+        self.app = App(self.root, Path(self.storage.name) / 'inventory.json')
         self.app.devices = [Device("USG-01", "192.0.2.1", "Huawei CE"),
                             Device("CE-01", "192.0.2.2", "Huawei CE")]
         self.app.refresh()
@@ -36,6 +37,7 @@ class EditorTests(unittest.TestCase):
         self.app = None
         self.root = None
         gc.collect()
+        self.storage.cleanup()
 
     def test_dialogs_follow_main_window(self):
         self.root.geometry("1020x760+120+80")

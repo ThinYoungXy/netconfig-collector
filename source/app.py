@@ -8,7 +8,9 @@ import tkinter as tk
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
+
+from inventory import Inventory
 
 from collector import COLUMNS, PROFILES, collect, device_from_row, read_inventory, write_summary
 
@@ -17,9 +19,12 @@ STATE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "NetConfigColle
 
 
 class App:
-    def __init__(self, root):
+    def __init__(self, root, library_path=None):
         self.root = root
-        root.title("设备配置采集器 1.3.2")
+        self.library = Inventory(library_path if library_path is not None else STATE / 'inventory.json')
+        self.project_credentials = {}
+        self.active_project = None
+        root.title("设备配置采集器 1.4.0")
         root.geometry("1180x880")
         root.minsize(1020, 760)
         root.configure(background="#f3f6fb")
@@ -79,9 +84,30 @@ class App:
         header = ttk.Frame(main)
         header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         ttk.Label(header, text="设备配置采集器", style="Title.TLabel").pack(side="left")
-        ttk.Label(header, text="本地 SSH 采集    /    v1.3.2", style="Muted.TLabel").pack(side="right", anchor="s", pady=8)
-        ttk.Label(main, text="华为 NE / AR / CE / USG     ·     H3C Comware     ·     山石 StoneOS",
-                  style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 16))
+        ttk.Label(header, text="本地 SSH 采集    /    v1.4.0", style="Muted.TLabel").pack(side="right", anchor="s", pady=8)
+        scope = ttk.Frame(main)
+        scope.grid(row=1, column=0, sticky="ew", pady=(0, 14))
+        self.project = tk.StringVar()
+        self.area = tk.StringVar()
+        for text, variable, attribute in (("项目", self.project, "project_box"), ("区域", self.area, "area_box")):
+            ttk.Label(scope, text=text).pack(side="left", padx=(0, 8))
+            box = ttk.Combobox(scope, textvariable=variable, width=20, state="readonly")
+            box.pack(side="left", padx=(0, 12))
+            box.bind("<<ComboboxSelected>>", self.switch_area)
+            setattr(self, attribute, box)
+            self.controls.append(box)
+        for text, kind in (("新建项目", "project"), ("新建区域", "area")):
+            button = ttk.Button(scope, text=text, command=lambda kind=kind: self.manage_inventory("create", kind))
+            button.pack(side="left", padx=(0, 6))
+            self.controls.append(button)
+        manage = ttk.Menubutton(scope, text="管理 ▾")
+        menu = tk.Menu(manage, tearoff=False)
+        for label, action, kind in (("重命名项目", "rename", "project"), ("重命名区域", "rename", "area"),
+                                    ("删除项目", "delete", "project"), ("删除区域", "delete", "area")):
+            menu.add_command(label=label, command=lambda action=action, kind=kind: self.manage_inventory(action, kind))
+        manage.configure(menu=menu)
+        manage.pack(side="left", padx=(4, 0))
+        self.controls.append(manage)
 
         inventory = ttk.Frame(main, style="Card.TFrame", padding=16)
         inventory.grid(row=2, column=0, sticky="nsew")
@@ -162,7 +188,7 @@ class App:
         self.controls.append(trust)
         actions = ttk.Frame(main)
         actions.grid(row=4, column=0, sticky="ew", pady=(16, 0))
-        self.start_button = ttk.Button(actions, text="开始采集全部设备", style="Primary.TButton", command=self.start)
+        self.start_button = ttk.Button(actions, text="采集当前区域", style="Primary.TButton", command=self.start)
         self.start_button.pack(side="left")
         self.controls.append(self.start_button)
         self.retry_button = ttk.Button(actions, text="重试失败设备", command=self.retry_failed)
@@ -176,8 +202,86 @@ class App:
         ttk.Label(main, textvariable=self.status, wraplength=960).grid(row=6, column=0, sticky="w")
         ttk.Label(main, text="密码仅保留在本次会话中  ·  采集文件可能包含设备密钥，请妥善保管",
                   style="Muted.TLabel").grid(row=7, column=0, sticky="w", pady=(8, 0))
+        self.load_area()
         root.protocol("WM_DELETE_WINDOW", self.close)
         root.after(100, self.poll)
+
+
+    def load_area(self):
+        project, area = self.library.selected
+        if self.active_project is not None:
+            self.project_credentials[self.active_project] = self.credentials
+        self.credentials = self.project_credentials.setdefault(project, {})
+        self.active_project = project
+        self.project.set(project)
+        self.area.set(area)
+        self.project_box.configure(values=list(self.library.data["projects"]))
+        self.area_box.configure(values=list(self.library.data["projects"][project]))
+        self.devices = self.library.devices()
+        self.last_folder = None
+        self.progress.configure(value=0)
+        self.refresh()
+        self.status.set(f"{project} / {area}：{len(self.devices)} 台设备；设备信息自动保存。")
+
+    def persist_devices(self, devices):
+        try:
+            if devices != self.library.devices():
+                self.library.save_devices(devices)
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"保存设备库失败，修改未生效：{exc}") from exc
+
+    def switch_area(self, event=None):
+        if self.running:
+            self.project.set(self.library.selected[0])
+            self.area.set(self.library.selected[1])
+            return
+        project = self.project.get()
+        old_project, old_area = self.library.selected
+        area = (next(iter(self.library.data["projects"][project])) if project != old_project else self.area.get())
+        try:
+            self.persist_devices(self.devices)
+            self.library.select(project, area)
+        except (OSError, ValueError) as exc:
+            self.project.set(old_project)
+            self.area.set(old_area)
+            messagebox.showerror("切换失败", str(exc), parent=self.root)
+            return
+        self.load_area()
+
+    def manage_inventory(self, action, kind):
+        if self.running:
+            return
+        project, area = self.library.selected
+        label = "项目" if kind == "project" else "区域"
+        name = project if kind == "project" else area
+        if action == "delete":
+            if not messagebox.askyesno("删除" + label,
+                    f"删除{label}“{name}”及其中保存的设备清单？\n已有采集文件不会删除。",
+                    parent=self.root):
+                return
+            value = None
+        else:
+            value = simpledialog.askstring("新建" + label if action == "create" else "重命名" + label,
+                                           label + "名称：",
+                                           initialvalue=name if action == "rename" else "",
+                                           parent=self.root)
+            if value is None:
+                return
+        try:
+            self.persist_devices(self.devices)
+            if action == "delete":
+                self.library.delete(kind)
+            else:
+                getattr(self.library, action)(kind, value)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("操作失败", str(exc), parent=self.root)
+            return
+        if kind == "project" and action in ("rename", "delete"):
+            self.project_credentials.pop(project, None)
+            if action == "rename":
+                self.project_credentials[self.library.selected[0]] = self.credentials
+            self.active_project = None
+        self.load_area()
 
 
     def refresh(self):
@@ -197,6 +301,10 @@ class App:
             return
         try:
             devices = read_inventory(filename)
+            if self.devices and not messagebox.askyesno("替换当前区域清单",
+                    f"将替换“{self.project.get()} / {self.area.get()}”的设备清单，继续吗？", parent=self.root):
+                return
+            self.persist_devices(devices)
         except (OSError, UnicodeError, ValueError, csv.Error) as exc:
             messagebox.showerror("导入失败", str(exc))
             return
@@ -242,6 +350,12 @@ class App:
         if any(i != index and d.host.lower() == device.host.lower() and d.port == device.port
                for i, d in enumerate(self.devices)):
             raise ValueError("设备地址和端口已存在")
+        updated = list(self.devices)
+        if index is None:
+            updated.append(device)
+        else:
+            updated[index] = device
+        self.persist_devices(updated)
         previous_status = self.tree.set(str(index), "status") if index is not None else ""
         if index is None:
             index = len(self.devices)
@@ -258,7 +372,7 @@ class App:
         self.tree.see(str(index))
         self.update_counts()
         self.selected_changed()
-        self.status.set("设备已更新。可点击“保存清单”保存为 CSV，下次直接导入。")
+        self.status.set(f"已自动保存到 {self.project.get()} / {self.area.get()}。")
 
     def show_dialog(self, dialog):
         """Position the completed dialog before showing it."""
@@ -390,7 +504,15 @@ class App:
 
     def remove(self):
         selected = {int(item) for item in self.tree.selection()}
-        self.devices = [d for i, d in enumerate(self.devices) if i not in selected]
+        if self.running or not selected:
+            return
+        devices = [d for i, d in enumerate(self.devices) if i not in selected]
+        try:
+            self.persist_devices(devices)
+        except ValueError as exc:
+            messagebox.showerror("删除失败", str(exc), parent=self.root)
+            return
+        self.devices = devices
         self.refresh()
 
     def edit_credentials(self):
@@ -469,7 +591,9 @@ class App:
         try:
             if not self.output.get().strip():
                 raise ValueError("请选择保存目录")
-            folder = Path(self.output.get()) / (("retry_" if retry_failed else "") +
+            self.persist_devices(self.devices)
+            project, area = self.library.selected
+            folder = Path(self.output.get()) / project / area / (("retry_" if retry_failed else "") +
                                               datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
             folder.mkdir(parents=True, exist_ok=False)
             (folder / ".write_test").write_text("ok", encoding="utf-8")
@@ -592,11 +716,20 @@ class App:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = App(root)
     if "--smoke-test" in sys.argv:
-        root.update()
-        root.destroy()
+        import tempfile
+        with tempfile.TemporaryDirectory() as temporary:
+            app = App(root, Path(temporary) / "inventory.json")
+            root.update()
+            root.destroy()
     else:
-        root.mainloop()
+        try:
+            app = App(root)
+        except (OSError, ValueError) as exc:
+            root.withdraw()
+            messagebox.showerror("无法加载设备库", str(exc), parent=root)
+            root.destroy()
+        else:
+            root.mainloop()
 
 

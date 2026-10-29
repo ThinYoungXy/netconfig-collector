@@ -14,7 +14,7 @@ class RetryTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = tk.Tk()
-        self.ui = app.App(self.root)
+        self.ui = app.App(self.root, Path(self.temp.name) / 'inventory.json')
         self.ui.devices = [Device("OK", "192.0.2.1", "Huawei CE", credential="unused"),
                            Device("WAIT", "192.0.2.2", "Huawei CE"),
                            Device("FAIL", "192.0.2.3", "Huawei USG"),
