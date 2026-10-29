@@ -24,43 +24,71 @@ class App:
         self.library = Inventory(library_path if library_path is not None else STATE / 'inventory.json')
         self.project_credentials = {}
         self.active_project = None
-        root.title("设备配置采集器 1.6.0")
-        root.geometry("1280x860")
+        root.title("设备配置采集器 1.7.0")
+        root.geometry("1280x920")
         root.minsize(1020, 760)
-        root.configure(background="#f3f5f9")
+        root.configure(background="#090f1c")
+        root.option_add("*TCombobox*Listbox.background", "#142239")
+        root.option_add("*TCombobox*Listbox.foreground", "#e1eaf7")
+        root.option_add("*TCombobox*Listbox.selectBackground", "#24476a")
+        root.option_add("*TCombobox*Listbox.selectForeground", "#ffffff")
+        root.option_add("*Menu.background", "#142239")
+        root.option_add("*Menu.foreground", "#e1eaf7")
+        root.option_add("*Menu.activeBackground", "#24476a")
+        root.option_add("*Menu.activeForeground", "#ffffff")
         style = ttk.Style()
         style.theme_use("clam")
-        style.configure(".", font=("Microsoft YaHei UI", 10), background="#f3f5f9", foreground="#23324a")
-        style.configure("TFrame", background="#f3f5f9")
-        style.configure("Card.TFrame", background="#ffffff")
-        style.configure("TLabel", background="#f3f5f9")
-        style.configure("Card.TLabel", background="#ffffff")
-        style.configure("Muted.TLabel", foreground="#738197")
-        style.configure("CardMuted.TLabel", background="#ffffff", foreground="#738197")
-        style.configure("Title.TLabel", font=("Microsoft YaHei UI", 20, "bold"), foreground="#182b49")
-        style.configure("Section.TLabel", background="#ffffff", font=("Microsoft YaHei UI", 12, "bold"))
-        style.configure("TButton", background="#ffffff", bordercolor="#dbe3ef", lightcolor="#ffffff",
-                        darkcolor="#ffffff", borderwidth=1, padding=(10, 7))
-        style.map("TButton", background=[("active", "#eef4ff"), ("disabled", "#f5f7fa")],
-                  foreground=[("disabled", "#a3adbc")])
-        style.configure("Primary.TButton", background="#3159d9", foreground="#ffffff",
-                        bordercolor="#3159d9", lightcolor="#3159d9", darkcolor="#3159d9")
-        style.map("Primary.TButton", background=[("disabled", "#b7c9ed"), ("active", "#1e50bd")],
-                  foreground=[("disabled", "#edf2fc"), ("!disabled", "#ffffff")])
-        style.configure("TEntry", fieldbackground="#ffffff", bordercolor="#dbe3ef", padding=7)
-        style.configure("TCombobox", fieldbackground="#ffffff", bordercolor="#dbe3ef", padding=6,
-                        arrowsize=13)
-        style.map("TCombobox", fieldbackground=[("readonly", "#ffffff")],
-                  selectbackground=[("readonly", "#ffffff")], selectforeground=[("readonly", "#23324a")])
-        style.configure("TCheckbutton", background="#ffffff", padding=4)
-        style.map("TCheckbutton", background=[("active", "#ffffff")])
-        style.configure("Treeview", background="#ffffff", fieldbackground="#ffffff", rowheight=40,
-                        borderwidth=0, font=("Microsoft YaHei UI", 10))
-        style.configure("Treeview.Heading", background="#edf2f8", foreground="#63718a",
+        style.configure(".", font=("Microsoft YaHei UI", 10), background="#090f1c", foreground="#e1eaf7")
+        style.configure("TFrame", background="#090f1c")
+        style.configure("Card.TFrame", background="#111e30")
+        style.configure("TLabel", background="#090f1c")
+        style.configure("Card.TLabel", background="#111e30")
+        style.configure("Muted.TLabel", foreground="#8fa4be")
+        style.configure("CardMuted.TLabel", background="#111e30", foreground="#8fa4be")
+        style.configure("Title.TLabel", font=("Microsoft YaHei UI", 21, "bold"), foreground="#f0f6ff")
+        style.configure("Brand.TLabel", font=("Consolas", 10, "bold"), foreground="#51d7ed")
+        style.configure("Section.TLabel", background="#111e30", foreground="#eaf3ff",
+                        font=("Microsoft YaHei UI", 12, "bold"))
+        style.configure("Count.TLabel", background="#172e43", foreground="#6bd8ed", padding=(12, 5))
+        style.configure("TButton", background="#192a40", foreground="#dce8f8", bordercolor="#2b405a",
+                        lightcolor="#192a40", darkcolor="#192a40", borderwidth=1, padding=(10, 7))
+        style.map("TButton", background=[("disabled", "#111b2b"), ("active", "#243e59")],
+                  foreground=[("disabled", "#73859c")], bordercolor=[("active", "#4c8eab")])
+        style.configure("Primary.TButton", background="#49cee6", foreground="#08202f",
+                        bordercolor="#49cee6", lightcolor="#49cee6", darkcolor="#49cee6")
+        style.map("Primary.TButton", background=[("disabled", "#254252"), ("active", "#7ce8f7")],
+                  foreground=[("disabled", "#8fa4be"), ("!disabled", "#08202f")])
+        style.configure("TEntry", fieldbackground="#0c1727", foreground="#e1eaf7",
+                        insertcolor="#51d7ed", bordercolor="#2b405a", lightcolor="#0c1727",
+                        darkcolor="#0c1727", padding=7)
+        style.map("TEntry", bordercolor=[("focus", "#51d7ed")])
+        style.configure("TCombobox", fieldbackground="#0c1727", background="#192a40", foreground="#e1eaf7",
+                        arrowcolor="#51d7ed", bordercolor="#2b405a", lightcolor="#0c1727",
+                        darkcolor="#0c1727", padding=6, arrowsize=13)
+        style.map("TCombobox", fieldbackground=[("readonly", "#0c1727"), ("disabled", "#111b2b")],
+                  foreground=[("disabled", "#73859c"), ("readonly", "#e1eaf7")],
+                  selectbackground=[("readonly", "#0c1727")], selectforeground=[("readonly", "#e1eaf7")],
+                  bordercolor=[("focus", "#51d7ed")])
+        style.configure("TCheckbutton", background="#111e30", foreground="#adbed3", padding=4,
+                        indicatorbackground="#0c1727", indicatorforeground="#51d7ed")
+        style.map("TCheckbutton", background=[("active", "#111e30")],
+                  foreground=[("disabled", "#73859c")])
+        style.configure("Treeview", background="#111e30", fieldbackground="#111e30", foreground="#cddbed",
+                        rowheight=40, borderwidth=0, bordercolor="#29425b", lightcolor="#29425b", darkcolor="#29425b", font=("Microsoft YaHei UI", 10))
+        style.configure("Treeview.Heading", background="#1a2c43", foreground="#9eb8d5",
                         font=("Microsoft YaHei UI", 10, "bold"), padding=(10, 7), relief="flat")
-        style.map("Treeview", background=[("selected", "#dce9ff")], foreground=[("selected", "#173d80")])
-        style.configure("Horizontal.TProgressbar", background="#3159d9", troughcolor="#e5ecf7",
-                        borderwidth=0, lightcolor="#3159d9", darkcolor="#3159d9")
+        style.map("Treeview.Heading", background=[("active", "#24405b")])
+        style.map("Treeview", background=[("selected", "#234864")], foreground=[("selected", "#e8faff")])
+        style.configure("TScrollbar", background="#29425b", troughcolor="#0c1727", arrowcolor="#8fa4be",
+                        bordercolor="#0c1727", lightcolor="#29425b", darkcolor="#29425b", arrowsize=12)
+        style.map("TScrollbar", background=[("active", "#3c637f")])
+        style.configure("Horizontal.TProgressbar", background="#49cee6", troughcolor="#17273b",
+                        borderwidth=0, bordercolor="#17273b", lightcolor="#49cee6", darkcolor="#49cee6", thickness=5)
+        style.configure("TMenubutton", padding=(10, 7), background="#192a40", foreground="#dce8f8",
+                        arrowcolor="#51d7ed", bordercolor="#2b405a", lightcolor="#192a40",
+                        darkcolor="#192a40", borderwidth=1)
+        style.map("TMenubutton", background=[("disabled", "#111b2b"), ("active", "#243e59")],
+                  foreground=[("disabled", "#73859c")])
         self.devices = []
         self.credentials = {}
         self.events = queue.Queue()
@@ -77,18 +105,20 @@ class App:
         self.status = tk.StringVar(value="添加或导入设备，设置登录凭据后即可开始。")
         self.counts = tk.StringVar(value="0 台设备   ·   成功 0   ·   失败 0")
         self.selection_text = tk.StringVar(value="选中设备后点击“编辑设备”，或直接双击设备行。")
-        style.configure("TMenubutton", padding=(10, 7), background="#ffffff", borderwidth=1)
         main = ttk.Frame(root, padding=16)
         main.pack(fill="both", expand=True)
         main.columnconfigure(0, weight=1)
         main.rowconfigure(2, weight=1)
         header = ttk.Frame(main)
         header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        ttk.Label(header, text="配置采集工作台", style="Title.TLabel").pack(side="left")
-        ttk.Label(header, text="SSH  /  本地采集  /  v1.6.0", style="Muted.TLabel").pack(side="right")
+        identity = ttk.Frame(header)
+        identity.pack(side="left")
+        ttk.Label(identity, text="NETCONFIG  /  COLLECTION CONSOLE", style="Brand.TLabel").pack(anchor="w")
+        ttk.Label(identity, text="设备配置采集控制台", style="Title.TLabel").pack(anchor="w", pady=(2, 0))
+        ttk.Label(header, text="SSH  ·  本地工作空间\nv1.7.0", justify="right", style="Muted.TLabel").pack(side="right")
         scope = ttk.Frame(main, style="Card.TFrame", padding=12)
         scope.grid(row=1, column=0, sticky="ew", pady=(0, 14))
-        ttk.Label(scope, text="当前项目", style="CardMuted.TLabel").pack(side="left", padx=(0, 12))
+        ttk.Label(scope, text="PROJECT  /  当前项目", style="CardMuted.TLabel").pack(side="left", padx=(0, 12))
         self.project = tk.StringVar()
         self.project_box = ttk.Combobox(scope, textvariable=self.project, width=30, state="readonly")
         self.project_box.pack(side="left", fill="x", expand=True)
@@ -111,8 +141,8 @@ class App:
         inventory.rowconfigure(2, weight=1)
         heading = ttk.Frame(inventory, style="Card.TFrame")
         heading.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        ttk.Label(heading, text="设备清单", style="Section.TLabel").pack(side="left")
-        ttk.Label(heading, textvariable=self.counts, style="CardMuted.TLabel").pack(side="right")
+        ttk.Label(heading, text="01  /  设备清单", style="Section.TLabel").pack(side="left")
+        ttk.Label(heading, textvariable=self.counts, style="Count.TLabel").pack(side="right")
         bar = ttk.Frame(inventory, style="Card.TFrame")
         bar.grid(row=1, column=0, sticky="ew", pady=(0, 8))
         for label, command in [
@@ -138,11 +168,11 @@ class App:
                                      (240, 155, 135, 90, 130)):
             self.tree.heading(col, text=title, anchor="w")
             self.tree.column(col, width=width, minwidth=90, anchor="w")
-        self.tree.tag_configure("even", background="#ffffff")
-        self.tree.tag_configure("odd", background="#f7f9fd")
-        self.tree.tag_configure("success", foreground="#15805a")
-        self.tree.tag_configure("failed", foreground="#c34545")
-        self.tree.tag_configure("working", foreground="#3159d9")
+        self.tree.tag_configure("even", background="#111e30")
+        self.tree.tag_configure("odd", background="#14243a")
+        self.tree.tag_configure("success", foreground="#65ddb4")
+        self.tree.tag_configure("failed", foreground="#ff8997")
+        self.tree.tag_configure("working", foreground="#63d6ef")
         scrollbar = ttk.Scrollbar(table, orient="vertical", command=self.tree.yview)
         horizontal = ttk.Scrollbar(table, orient="horizontal", command=self.tree.xview)
         self.tree.configure(yscrollcommand=scrollbar.set, xscrollcommand=horizontal.set)
@@ -160,7 +190,7 @@ class App:
         settings.grid(row=3, column=0, sticky="ew", pady=(14, 0))
         row = ttk.Frame(settings, style="Card.TFrame")
         row.pack(fill="x", pady=(0, 10))
-        ttk.Label(row, text="采集设置", style="Section.TLabel").pack(side="left")
+        ttk.Label(row, text="02  /  采集设置", style="Section.TLabel").pack(side="left")
         button = ttk.Button(row, text="设置登录凭据", command=self.edit_credentials)
         button.pack(side="right")
         self.controls.append(button)
@@ -431,7 +461,7 @@ class App:
         dialog.withdraw()
         dialog.title("编辑设备" if index is not None else "添加设备")
         dialog.resizable(False, False)
-        dialog.configure(background="#ffffff")
+        dialog.configure(background="#111e30")
         dialog.transient(self.root)
         panel = ttk.Frame(dialog, style="Card.TFrame", padding=24)
         panel.pack(fill="both", expand=True)
@@ -526,6 +556,7 @@ class App:
         dialog = tk.Toplevel(self.root)
         dialog.withdraw()
         dialog.title("登录凭据 · 仅本次运行有效")
+        dialog.configure(background="#090f1c")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         group = tk.StringVar(value="default")
@@ -555,7 +586,7 @@ class App:
         load()
         ttk.Label(dialog, text="不同账号使用不同凭据组，在设备清单中指定。").grid(
             row=3, column=0, columnspan=2, padx=12, pady=8)
-        ttk.Button(dialog, text="保存到本次会话", command=save).grid(row=4, column=1, padx=12, pady=12)
+        ttk.Button(dialog, text="保存到本次会话", style="Primary.TButton", command=save).grid(row=4, column=1, padx=12, pady=12)
         self.show_dialog(dialog)
 
     def browse(self):
