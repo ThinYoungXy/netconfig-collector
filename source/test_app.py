@@ -144,6 +144,28 @@ class EditorTests(unittest.TestCase):
             self.assertEqual(read_inventory(filename), self.app.devices)
             self.assertNotIn("password", Path(filename).read_text(encoding="utf-8-sig"))
 
+    def test_action_labels_fit_at_multiple_scales(self):
+        from tkinter import font
+        for scale in (1.333, 1.667, 2.0, 2.667):
+            with self.subTest(scale=scale):
+                for timer in self.root.tk.call("after", "info"):
+                    self.root.after_cancel(timer)
+                for child in self.root.winfo_children():
+                    child.destroy()
+                self.root.tk.call("tk", "scaling", scale)
+                self.app = App(self.root, Path(self.storage.name) / 'inventory.json')
+                self.root.geometry("1020x760" if scale < 2 else "1280x860")
+                self.root.update()
+                for widget in descendants(self.root):
+                    if isinstance(widget, (ttk.Button, ttk.Menubutton)):
+                        style = widget.cget("style") or widget.winfo_class()
+                        face = font.Font(root=self.root, font=ttk.Style().lookup(style, "font"))
+                        extra = 30 if isinstance(widget, ttk.Menubutton) else 20
+                        self.assertGreaterEqual(widget.winfo_width(), face.measure(widget.cget("text")) + extra,
+                                                widget.cget("text"))
+                        self.assertLessEqual(widget.winfo_rootx() + widget.winfo_width(),
+                                             self.root.winfo_rootx() + self.root.winfo_width())
+
     def test_minimum_window_controls_visible(self):
         self.root.geometry("1020x760")
         self.root.update()
