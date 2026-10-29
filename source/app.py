@@ -24,27 +24,27 @@ class App:
         self.library = Inventory(library_path if library_path is not None else STATE / 'inventory.json')
         self.project_credentials = {}
         self.active_project = None
-        root.title("设备配置采集器 1.4.0")
-        root.geometry("1180x880")
+        root.title("设备配置采集器 1.5.0")
+        root.geometry("1280x860")
         root.minsize(1020, 760)
-        root.configure(background="#f3f6fb")
+        root.configure(background="#f3f5f9")
         style = ttk.Style()
         style.theme_use("clam")
-        style.configure(".", font=("Microsoft YaHei UI", 10), background="#f3f6fb", foreground="#23324a")
-        style.configure("TFrame", background="#f3f6fb")
+        style.configure(".", font=("Microsoft YaHei UI", 10), background="#f3f5f9", foreground="#23324a")
+        style.configure("TFrame", background="#f3f5f9")
         style.configure("Card.TFrame", background="#ffffff")
-        style.configure("TLabel", background="#f3f6fb")
+        style.configure("TLabel", background="#f3f5f9")
         style.configure("Card.TLabel", background="#ffffff")
         style.configure("Muted.TLabel", foreground="#738197")
         style.configure("CardMuted.TLabel", background="#ffffff", foreground="#738197")
-        style.configure("Title.TLabel", font=("Microsoft YaHei UI", 23, "bold"), foreground="#182b49")
+        style.configure("Title.TLabel", font=("Microsoft YaHei UI", 20, "bold"), foreground="#182b49")
         style.configure("Section.TLabel", background="#ffffff", font=("Microsoft YaHei UI", 12, "bold"))
         style.configure("TButton", background="#ffffff", bordercolor="#dbe3ef", lightcolor="#ffffff",
-                        darkcolor="#ffffff", borderwidth=1, padding=(12, 7))
+                        darkcolor="#ffffff", borderwidth=1, padding=(10, 7))
         style.map("TButton", background=[("active", "#eef4ff"), ("disabled", "#f5f7fa")],
                   foreground=[("disabled", "#a3adbc")])
-        style.configure("Primary.TButton", background="#2964df", foreground="#ffffff",
-                        bordercolor="#2964df", lightcolor="#2964df", darkcolor="#2964df")
+        style.configure("Primary.TButton", background="#3159d9", foreground="#ffffff",
+                        bordercolor="#3159d9", lightcolor="#3159d9", darkcolor="#3159d9")
         style.map("Primary.TButton", background=[("disabled", "#b7c9ed"), ("active", "#1e50bd")],
                   foreground=[("disabled", "#edf2fc"), ("!disabled", "#ffffff")])
         style.configure("TEntry", fieldbackground="#ffffff", bordercolor="#dbe3ef", padding=7)
@@ -54,13 +54,13 @@ class App:
                   selectbackground=[("readonly", "#ffffff")], selectforeground=[("readonly", "#23324a")])
         style.configure("TCheckbutton", background="#ffffff", padding=4)
         style.map("TCheckbutton", background=[("active", "#ffffff")])
-        style.configure("Treeview", background="#ffffff", fieldbackground="#ffffff", rowheight=34,
+        style.configure("Treeview", background="#ffffff", fieldbackground="#ffffff", rowheight=40,
                         borderwidth=0, font=("Microsoft YaHei UI", 10))
         style.configure("Treeview.Heading", background="#edf2f8", foreground="#63718a",
                         font=("Microsoft YaHei UI", 10, "bold"), padding=(10, 7), relief="flat")
         style.map("Treeview", background=[("selected", "#dce9ff")], foreground=[("selected", "#173d80")])
-        style.configure("Horizontal.TProgressbar", background="#2964df", troughcolor="#e5ecf7",
-                        borderwidth=0, lightcolor="#2964df", darkcolor="#2964df")
+        style.configure("Horizontal.TProgressbar", background="#3159d9", troughcolor="#e5ecf7",
+                        borderwidth=0, lightcolor="#3159d9", darkcolor="#3159d9")
         self.devices = []
         self.credentials = {}
         self.events = queue.Queue()
@@ -77,40 +77,54 @@ class App:
         self.status = tk.StringVar(value="添加或导入设备，设置登录凭据后即可开始。")
         self.counts = tk.StringVar(value="0 台设备   ·   成功 0   ·   失败 0")
         self.selection_text = tk.StringVar(value="选中设备后点击“编辑设备”，或直接双击设备行。")
-        main = ttk.Frame(root, padding=24)
+        style.configure("Nav.TFrame", background="#17243c")
+        style.configure("Nav.TLabel", background="#17243c", foreground="#ffffff",
+                        font=("Microsoft YaHei UI", 12, "bold"))
+        style.configure("NavMuted.TLabel", background="#17243c", foreground="#9cabc2")
+        style.configure("Nav.TButton", background="#243650", foreground="#e0e8f5",
+                        bordercolor="#243650", lightcolor="#243650", darkcolor="#243650")
+        style.map("Nav.TButton", background=[("active", "#334b70"), ("disabled", "#243650")],
+                  foreground=[("disabled", "#738197")])
+        style.configure("TMenubutton", padding=(10, 7), background="#ffffff", borderwidth=1)
+        main = ttk.Frame(root, padding=20)
         main.pack(fill="both", expand=True)
-        main.columnconfigure(0, weight=1)
-        main.rowconfigure(2, weight=1)
+        main.columnconfigure(1, weight=1)
+        main.rowconfigure(1, weight=1)
         header = ttk.Frame(main)
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        ttk.Label(header, text="设备配置采集器", style="Title.TLabel").pack(side="left")
-        ttk.Label(header, text="本地 SSH 采集    /    v1.4.0", style="Muted.TLabel").pack(side="right", anchor="s", pady=8)
-        scope = ttk.Frame(main)
-        scope.grid(row=1, column=0, sticky="ew", pady=(0, 14))
+        header.grid(row=0, column=1, sticky="ew", padx=(20, 0), pady=(0, 18))
+        ttk.Label(header, text="配置采集工作台", style="Title.TLabel").pack(side="left")
+        ttk.Label(header, text="SSH  /  本地采集  /  v1.5.0", style="Muted.TLabel").pack(side="right")
+        scope = ttk.Frame(main, style="Nav.TFrame", padding=(16, 24))
+        scope.grid(row=0, column=0, rowspan=8, sticky="ns")
+        ttk.Label(scope, text="NETCONFIG", style="Nav.TLabel").pack(anchor="w")
+        ttk.Label(scope, text="设备配置采集器", style="NavMuted.TLabel").pack(anchor="w", pady=(6, 30))
         self.project = tk.StringVar()
         self.area = tk.StringVar()
-        for text, variable, attribute in (("项目", self.project, "project_box"), ("区域", self.area, "area_box")):
-            ttk.Label(scope, text=text).pack(side="left", padx=(0, 8))
-            box = ttk.Combobox(scope, textvariable=variable, width=20, state="readonly")
-            box.pack(side="left", padx=(0, 12))
+        for text, variable, attribute in (("项目", self.project, "project_box"), ("采集区域", self.area, "area_box")):
+            ttk.Label(scope, text=text, style="NavMuted.TLabel").pack(anchor="w", pady=(0, 8))
+            box = ttk.Combobox(scope, textvariable=variable, width=14, state="readonly")
+            box.pack(fill="x", pady=(0, 22))
             box.bind("<<ComboboxSelected>>", self.switch_area)
             setattr(self, attribute, box)
             self.controls.append(box)
-        for text, kind in (("新建项目", "project"), ("新建区域", "area")):
-            button = ttk.Button(scope, text=text, command=lambda kind=kind: self.manage_inventory("create", kind))
-            button.pack(side="left", padx=(0, 6))
+        for text, kind in (("＋ 新建项目", "project"), ("＋ 新建区域", "area")):
+            button = ttk.Button(scope, text=text, style="Nav.TButton",
+                                command=lambda kind=kind: self.manage_inventory("create", kind))
+            button.pack(fill="x", pady=(0, 8))
             self.controls.append(button)
-        manage = ttk.Menubutton(scope, text="管理 ▾")
+        manage = ttk.Menubutton(scope, text="管理项目与区域")
         menu = tk.Menu(manage, tearoff=False)
         for label, action, kind in (("重命名项目", "rename", "project"), ("重命名区域", "rename", "area"),
                                     ("删除项目", "delete", "project"), ("删除区域", "delete", "area")):
             menu.add_command(label=label, command=lambda action=action, kind=kind: self.manage_inventory(action, kind))
         manage.configure(menu=menu)
-        manage.pack(side="left", padx=(4, 0))
+        manage.pack(fill="x", pady=(8, 0))
         self.controls.append(manage)
+        ttk.Label(scope, text="设备信息自动保存\n密码仅用于本次会话", style="NavMuted.TLabel",
+                  justify="left").pack(side="bottom", anchor="w", pady=(24, 0))
 
         inventory = ttk.Frame(main, style="Card.TFrame", padding=16)
-        inventory.grid(row=2, column=0, sticky="nsew")
+        inventory.grid(row=1, column=1, sticky="nsew", padx=(20, 0))
         inventory.columnconfigure(0, weight=1)
         inventory.rowconfigure(2, weight=1)
         heading = ttk.Frame(inventory, style="Card.TFrame")
@@ -122,25 +136,32 @@ class App:
         for label, command in [
             ("添加设备", self.add_device), ("编辑设备", self.edit_selected),
             ("删除选中", self.remove), ("导入 CSV", self.import_csv),
-            ("保存清单", self.export_inventory), ("导出模板", self.template),
+            
         ]:
-            button = ttk.Button(bar, text=label, command=command)
+            button = ttk.Button(bar, text=label, width=6, command=command)
             button.pack(side="left", padx=(0, 6))
             self.controls.append(button)
-        ttk.Button(bar, text="采集详情", command=self.show_detail).pack(side="right")
+        more = ttk.Menubutton(bar, text="更多", width=4)
+        exports = tk.Menu(more, tearoff=False)
+        exports.add_command(label="导出当前清单 CSV", command=self.export_inventory)
+        exports.add_command(label="导出设备模板", command=self.template)
+        more.configure(menu=exports)
+        more.pack(side="left")
+        self.controls.append(more)
+        ttk.Button(bar, text="采集详情", width=6, command=self.show_detail).pack(side="right")
         table = ttk.Frame(inventory, style="Card.TFrame")
         table.grid(row=2, column=0, sticky="nsew")
         columns = ("name", "host", "platform", "credential", "status")
         self.tree = ttk.Treeview(table, columns=columns, show="headings", selectmode="extended", height=6)
         for col, title, width in zip(columns, ("设备名称", "SSH 地址", "设备类型", "凭据组", "采集状态"),
-                                     (270, 180, 180, 110, 180)):
+                                     (240, 155, 135, 90, 130)):
             self.tree.heading(col, text=title, anchor="w")
             self.tree.column(col, width=width, minwidth=90, anchor="w")
         self.tree.tag_configure("even", background="#ffffff")
         self.tree.tag_configure("odd", background="#f7f9fd")
         self.tree.tag_configure("success", foreground="#15805a")
         self.tree.tag_configure("failed", foreground="#c34545")
-        self.tree.tag_configure("working", foreground="#2964df")
+        self.tree.tag_configure("working", foreground="#3159d9")
         scrollbar = ttk.Scrollbar(table, orient="vertical", command=self.tree.yview)
         horizontal = ttk.Scrollbar(table, orient="horizontal", command=self.tree.xview)
         self.tree.configure(yscrollcommand=scrollbar.set, xscrollcommand=horizontal.set)
@@ -152,10 +173,10 @@ class App:
         self.tree.bind("<Double-1>", self.double_click)
         self.tree.bind("<<TreeviewSelect>>", self.selected_changed)
         ttk.Label(inventory, textvariable=self.selection_text, style="CardMuted.TLabel",
-                  wraplength=900).grid(row=3, column=0, sticky="w", pady=(10, 0))
+                  wraplength=680).grid(row=3, column=0, sticky="w", pady=(10, 0))
 
         settings = ttk.Frame(main, style="Card.TFrame", padding=16)
-        settings.grid(row=3, column=0, sticky="ew", pady=(14, 0))
+        settings.grid(row=2, column=1, sticky="ew", padx=(20, 0), pady=(14, 0))
         row = ttk.Frame(settings, style="Card.TFrame")
         row.pack(fill="x", pady=(0, 10))
         ttk.Label(row, text="采集设置", style="Section.TLabel").pack(side="left")
@@ -171,7 +192,17 @@ class App:
         browse = ttk.Button(destination, text="选择目录", command=self.browse)
         browse.pack(side="right")
         self.controls.append(browse)
-        options = ttk.Frame(settings, style="Card.TFrame")
+        advanced = ttk.Frame(settings, style="Card.TFrame")
+        def toggle_options():
+            if advanced.winfo_manager():
+                advanced.pack_forget()
+                toggle.configure(text="连接选项 ▾")
+            else:
+                advanced.pack(fill="x")
+                toggle.configure(text="收起选项 ▴")
+        toggle = ttk.Button(row, text="连接选项 ▾", command=toggle_options)
+        toggle.pack(side="right", padx=(0, 8))
+        options = ttk.Frame(advanced, style="Card.TFrame")
         options.pack(fill="x", pady=(12, 6))
         for text, variable, values, width in [
             ("并发台数", self.workers, ("1", "2", "4", "8"), 5),
@@ -180,14 +211,14 @@ class App:
         ]:
             ttk.Label(options, text=text, style="Card.TLabel").pack(side="left", padx=(0, 8))
             box = ttk.Combobox(options, textvariable=variable, values=values, width=width, state="readonly")
-            box.pack(side="left", padx=(0, 22))
+            box.pack(side="left", padx=(0, 12))
             self.controls.append(box)
-        trust = ttk.Checkbutton(settings, text="首次连接自动信任 SSH 指纹；已知指纹变化时仍拒绝连接",
+        trust = ttk.Checkbutton(advanced, text="首次连接自动信任 SSH 指纹；已知指纹变化时仍拒绝连接",
                                 variable=self.auto_trust)
         trust.pack(anchor="w")
         self.controls.append(trust)
         actions = ttk.Frame(main)
-        actions.grid(row=4, column=0, sticky="ew", pady=(16, 0))
+        actions.grid(row=3, column=1, sticky="ew", padx=(20, 0), pady=(16, 0))
         self.start_button = ttk.Button(actions, text="采集当前区域", style="Primary.TButton", command=self.start)
         self.start_button.pack(side="left")
         self.controls.append(self.start_button)
@@ -198,10 +229,10 @@ class App:
         self.stop_button.pack(side="left", padx=8)
         ttk.Button(actions, text="打开结果目录", command=self.open_results).pack(side="right")
         self.progress = ttk.Progressbar(main, mode="determinate")
-        self.progress.grid(row=5, column=0, sticky="ew", pady=(14, 8))
-        ttk.Label(main, textvariable=self.status, wraplength=960).grid(row=6, column=0, sticky="w")
-        ttk.Label(main, text="密码仅保留在本次会话中  ·  采集文件可能包含设备密钥，请妥善保管",
-                  style="Muted.TLabel").grid(row=7, column=0, sticky="w", pady=(8, 0))
+        self.progress.grid(row=4, column=1, sticky="ew", padx=(20, 0), pady=(14, 8))
+        ttk.Label(main, textvariable=self.status, wraplength=720).grid(row=5, column=1, sticky="w", padx=(20, 0))
+        ttk.Label(main, text="采集文件可能包含设备密钥，请妥善保管。",
+                  style="Muted.TLabel").grid(row=6, column=1, sticky="w", padx=(20, 0), pady=(8, 0))
         self.load_area()
         root.protocol("WM_DELETE_WINDOW", self.close)
         root.after(100, self.poll)

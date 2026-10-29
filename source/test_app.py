@@ -147,6 +147,10 @@ class EditorTests(unittest.TestCase):
     def test_minimum_window_controls_visible(self):
         self.root.geometry("1020x760")
         self.root.update()
+        toggle = next(w for w in descendants(self.root)
+                      if isinstance(w, ttk.Button) and w["text"] == "连接选项 ▾")
+        toggle.invoke()
+        self.root.update()
         for widget in self.app.controls + [self.app.stop_button, self.app.progress]:
             self.assertTrue(widget.winfo_ismapped())
             self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(),
