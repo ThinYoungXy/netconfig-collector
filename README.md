@@ -1,6 +1,6 @@
 # NetConfig Collector
 
-Windows 独立网络设备配置采集工具，当前版本 **2.0.0**。
+Windows 独立网络设备配置采集工具，当前版本 **2.0.1**。
 新版使用本地 WebView 界面与 Python SSH 核心；无需 Node.js、npx 或联网加载网页资源。
 
 ![实际桌面界面（示例设备与状态）](docs/preview.png)
@@ -10,7 +10,7 @@ Windows 独立网络设备配置采集工具，当前版本 **2.0.0**。
 1. 解压工具包，运行 NetConfigCollector.exe。
 2. 左侧新建或选择项目，添加设备或导入 CSV。
 3. 点击顶部“登录凭据”，填写设备使用的凭据组、用户名和密码。
-4. 在“连接设置”选择保存目录，点击“开始采集”。
+4. 在“采集设置”选择保存目录，点击“开始采集”。
 
 要求：Windows x64、Microsoft Edge WebView2 Runtime、.NET Framework 4.6.2 或更高版本。
 如提示缺少 WebView2，请从 [Microsoft 官方页面](https://developer.microsoft.com/microsoft-edge/webview2/) 安装运行时。
@@ -23,7 +23,7 @@ Windows 独立网络设备配置采集工具，当前版本 **2.0.0**。
 - 名称/IP 搜索、状态筛选、设备详情抽屉及实际采集阶段日志。
 - 项目凭据隔离，账号密码仅在本次会话内存中保存，不进入设备库或界面状态响应。
 - 并发采集、停止、失败/已停止设备重试；重试保留成功结果。
-- 首次 SSH 指纹默认自动信任，可在连接设置中关闭；已知密钥变化仍拒绝连接。
+- 首次 SSH 指纹默认自动信任，可在采集设置中关闭；已知密钥变化仍拒绝连接。
 - 单台配置、SHA-256、results.csv 和 SSH 协商诊断日志。
 
 支持 Huawei NE / AR / CE / USG、H3C Comware、Hillstone StoneOS 通用 CLI。

@@ -17,7 +17,7 @@ def main():
     try:
         api = DesktopAPI(state, base / 'backups')
         html = (Path(__file__).parent / 'desktop.html').read_text(encoding='utf-8-sig')
-        window = webview.create_window('NetConfig · 设备配置采集器 2.0.0', html=html, js_api=api,
+        window = webview.create_window('NetConfig · 设备配置采集器 2.0.1', html=html, js_api=api,
                                        width=1360, height=900, min_size=(1020, 720), background_color='#151619')
         api._window = window
         def closing():
