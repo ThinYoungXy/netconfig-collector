@@ -1,25 +1,18 @@
-# 从源码运行或重建
+# 构建新版桌面工具
 
-构建环境：Windows x64，Python 3.12.14，Paramiko 5.0.0，PyInstaller 6.22.3。
-不需要管理员权限即可运行程序；部署目录和输出目录需要当前用户可写。
-
-在 source 目录打开 PowerShell：
+Windows x64，Python 3.12，Edge WebView2 Runtime，.NET Framework 4.6.2+。
+在仓库根目录运行：
 
 ~~~powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
-.\.venv\Scripts\python.exe -m unittest discover -p "test_*.py"
-.\.venv\Scripts\python.exe app.py
+.\.venv\Scripts\python.exe -m pip install -r source/requirements-build.txt
+.\.venv\Scripts\python.exe -m unittest discover -s source -p "test_*.py"
+.\.venv\Scripts\python.exe source/desktop.py
+$desktopHtml = (Resolve-Path source/desktop.html).Path
+.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --onefile --windowed --name NetConfigCollector --add-data "${desktopHtml}:." --distpath dist --workpath build --specpath build source/desktop.py
+.\dist\NetConfigCollector.exe --smoke-test
 ~~~
 
-生成单文件 EXE：
-
-~~~powershell
-.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --onefile --windowed --name NetConfigCollector --distpath .. --workpath build app.py
-..\NetConfigCollector.exe --smoke-test
-~~~
-
-source/collector.py 是采集逻辑，source/app.py 是 Tkinter 界面。
-test_collector.py 包含本地 SSH 模拟服务器，不连接实际业务设备；测试账号是仅用于本地模拟的虚构数据。
-third-party-licenses/ 提供依赖的许可文本。
-
+--smoke-test 使用临时设备库，验证 WebView 和 JS/Python 桥接已加载后自动关闭；不访问真实设备库。
+pywebview 自带 PyInstaller hook，包含平台 DLL 和桥接脚本。WebView2 Runtime 为系统前置依赖，不打入程序。
+源码中保留的 app.py 为旧 Tkinter 入口，正式包从 desktop.py 构建。

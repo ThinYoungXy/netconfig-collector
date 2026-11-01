@@ -1,0 +1,3 @@
+Microsoft WebView2 SDK components are bundled through pywebview.
+Microsoft Edge WebView2 Runtime is a separate prerequisite, not bundled with this application.
+Product and distribution terms: https://developer.microsoft.com/microsoft-edge/webview2/
